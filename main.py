@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import argparse
 from classes.ecg_viewer import ecg_viewer
 from pathlib import Path
-from RBM import RBM
+from RBM_vectorized import RBM
 
 PTBXL_ROOT = Path("~/ecg_classification/PTB-XL/").expanduser()
 df_stemi = pd.read_csv("persisted_data/stemi_filenames.csv")
@@ -44,10 +44,10 @@ M = 128
 rbm = RBM(N, M)
 
 filename = "persisted_data/test2.npz"
-#rbm.load_model(filename)
+rbm.load_model(filename)
 
-rbm.train_model(eta=.0005, k=2, data_set=data_set,n_epochs=100)
-rbm.save_model(filename)
+#rbm.train_model(eta=.0001, k=5, data_set=data_set,n_epochs=5000)
+#rbm.save_model(filename)
 
 states = rbm.generate_rbm_states()
 states = states*std + mean
@@ -68,8 +68,8 @@ plt.show()
 plt.close()
 
 v0 = data_set[0]
-h = rbm.sample_hidden(v0)
-v1 = rbm.sample_visible(h)
+h = rbm.hidden_prob(v0)
+v1 = rbm.visible_mean(h)
 
 v0 = v0*std + mean
 v1 = v1*std + mean

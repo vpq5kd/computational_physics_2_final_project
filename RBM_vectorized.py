@@ -27,33 +27,8 @@ class RBM:
         sigma = self.rng.normal(loc=mean, scale=1.0)
 
         return sigma
-
-    def data_average_dw(self, data_set):
-        tau = self.sample_hidden(data_set)
-        de_dw_array = data_set.T @ tau
-        de_dw_array /= len(data_set)
-        
-        return de_dw_array
-
-    def model_average_dw(self, data_set, k):
-        sigma = data_set.copy()
-        tau = self.sample_hidden(sigma)
-
-        for _ in range(k):
-            sigma = self.sample_visible(tau)
-            tau = self.sample_hidden(sigma)
-
-        de_dw_array = sigma.T @ tau
-        de_dw_array /= len(data_set)
-        
-        return de_dw_array
-
-    def data_average_dtheta_v(self, data_set):
-        avg = np.mean(data_set, axis=0)
-        return avg
     
-
-    def model_average_dtheta_v(self, data_set, k):
+    def run_cd_k(self, data_set, k):
         sigma = data_set.copy()
         tau = self.sample_hidden(sigma)
 
@@ -61,41 +36,27 @@ class RBM:
             sigma = self.sample_visible(tau)
             tau = self.sample_hidden(sigma)
 
-        avg = np.mean(sigma, axis=0)
-        return avg
+        return sigma, tau
 
-    def data_average_dtheta_h(self, data_set):
-        tau = self.sample_hidden(data_set)
-        avg = np.mean(tau, axis=0)
-        return avg
+    def update_params(self, eta, k, data_set):
+        tau_data = self.sample_hidden(data_set)
 
-    def model_average_dtheta_h(self, data_set, k):
-        sigma = data_set.copy()
-        tau = self.sample_hidden(sigma)
+        sigma_model, tau_model = self.run_cd_k(data_set, k)
 
-        for _ in range(k):
-            sigma = self.sample_visible(tau)
-            tau = self.sample_hidden(sigma)
-
-        avg = np.mean(tau, axis=0)
-        return avg
-
-    def update_params(self, eta, k, data_set): 
         self.W += eta * (
-            self.data_average_dw(data_set)
-            - self.model_average_dw(data_set, k)
+            (data_set.T @ tau_data) / len(data_set)
+            - (sigma_model.T @ tau_model) / len(data_set)
         )
 
         self.theta_v += eta * (
-            self.data_average_dtheta_v(data_set)
-            - self.model_average_dtheta_v(data_set, k)
+            data_set.mean(axis=0)
+            - sigma_model.mean(axis=0)
         )
 
         self.theta_h += eta * (
-            self.data_average_dtheta_h(data_set)
-            - self.model_average_dtheta_h(data_set, k)
+            tau_data.mean(axis=0)
+            - tau_model.mean(axis=0)
         )
-
     
     def calculate_epsilon_W(self, w_before):
         epsilon_w = np.mean(np.abs(self.W - w_before))
@@ -132,6 +93,12 @@ class RBM:
 
     def visible_mean(self, tau):
         return tau @ self.W.T + self.theta_v
+
+    def hidden_prob(self, sigma):
+        activation = sigma @ self.W + self.theta_h
+        prob = 1.0/(1.0 + np.exp(-activation))
+        return prob
+
 
     def generate_rbm_states(self, num_states=1000, melting_iterations=50000):
         states = []
