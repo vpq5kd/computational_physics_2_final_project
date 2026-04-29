@@ -163,7 +163,7 @@ class RBM:
         self.theta_h = data["theta_h"]
         self.epsilon_w_arr = data["epsilon_w_arr"]
 
-    def generate_rbm_states(self, num_states=1000, melting_iterations=1000):
+    def generate_rbm_states(self, num_states=1000, melting_iterations=10000):
         states = []
         sigma = self.rng.normal(0.0,1.0,size=self.N)
 

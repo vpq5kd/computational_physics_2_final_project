@@ -2,6 +2,7 @@ import pandas as pd
 import wfdb
 import numpy as np
 import matplotlib.pyplot as plt
+import argparse
 from classes.ecg_viewer import ecg_viewer
 from pathlib import Path
 from RBM import RBM
@@ -23,7 +24,7 @@ data = []
 
 index = 0
 for filename in stemi_filenames:
-    if index == 1000:
+    if index == 5000:
         break
     signal = load_ecg(filename)
     signal = process_ecg(signal)
@@ -38,33 +39,45 @@ data_set = (data_set - mean) / std
 
 
 N = data_set.shape[1]
-M = 64
+M = 128
 
 rbm = RBM(N, M)
-rbm.train_model(eta=1e-4, k=1, data_set=data_set,n_epochs=50)
 
-filename = "persisted_data/test1.npz"
+filename = "persisted_data/test2.npz"
 #rbm.load_model(filename)
+
+rbm.train_model(eta=.0005, k=2, data_set=data_set,n_epochs=100)
 rbm.save_model(filename)
+
 states = rbm.generate_rbm_states()
-states = std*(states) + mean
+states = states*std + mean
 
-data_set = data_set*std + mean
-machine_average = np.mean(states, axis=0)
-real_average = np.mean(data_set, axis=0)
-print(f"machine average array: {machine_average}")
-print(f"real average array: {real_average}")
+average_generated_signal = np.mean(states, axis=0)
+
+rbm.display_epsilon_w("persisted_data/test2_epsilon_w.png")
+rbm.display_inter_layer_couplings("persisted_data/test2_ic.png")
+data_set_normalized = data_set*std + mean
+average_data_set_signal = np.mean(data_set_normalized, axis=0)
+
+plt.figure()
+plt.plot(average_generated_signal, label='average generated signal')
+plt.plot(average_data_set_signal ,label='average real sign')
+plt.ylabel("voltage (mv)")
+plt.legend()
+plt.show()
+plt.close()
+
+v0 = data_set[0]
+h = rbm.sample_hidden(v0)
+v1 = rbm.sample_visible(h)
+
+v0 = v0*std + mean
+v1 = v1*std + mean
+
+plt.figure()
+plt.plot(v0, label='original')
+plt.plot(v1, label='reconstruction')
+plt.legend()
+plt.show()
 
 
-def plot_signal(signal):
-    fs = 100
-    time = np.arange(len(signal)) / fs
-
-    plt.figure()
-    plt.plot(time, signal, color='black')
-    plt.xlabel("Time (s)")
-    plt.ylabel("Amplitude (mV)")
-    plt.show()
-
-for signal in states:
-    plot_signal(signal)
